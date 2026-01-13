@@ -10,8 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and reset activity select
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -25,9 +26,48 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+
+          <div class="participants">
+            <strong>Participants:</strong>
+            <ul class="participants-list"></ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Populate participants list (pretty)
+        const participantsListEl = activityCard.querySelector(".participants-list");
+        if (details.participants && details.participants.length > 0) {
+          details.participants.forEach((p) => {
+            const li = document.createElement("li");
+            li.className = "participant";
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = p;
+
+            const deleteIcon = document.createElement('span');
+            deleteIcon.className = 'delete-icon';
+            deleteIcon.title = 'Unregister participant';
+            deleteIcon.textContent = '🗑️';
+            deleteIcon.dataset.email = p;
+            deleteIcon.dataset.activity = name;
+
+            // Attach click handler to call unregister for this participant
+            deleteIcon.addEventListener('click', async function () {
+              await unregisterParticipant(this.dataset.activity, this.dataset.email);
+            });
+
+            li.appendChild(nameSpan);
+            li.appendChild(deleteIcon);
+            participantsListEl.appendChild(li);
+          });
+        } else {
+          // Replace empty ul with a friendly message
+          const noP = document.createElement("p");
+          noP.className = "no-participants";
+          noP.textContent = "No participants yet.";
+          participantsListEl.replaceWith(noP);
+        }
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -62,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+
+        // Refresh activities list so the UI updates immediately
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -83,4 +126,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+
+  // Function to unregister a participant by activity name and email
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/participants?email=${encodeURIComponent(email)}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message || `Unregistered ${email} from ${activityName}`;
+        messageDiv.className = 'success';
+        messageDiv.classList.remove('hidden');
+
+        // Refresh activities list to reflect changes
+        fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || 'Failed to unregister participant';
+        messageDiv.className = 'error';
+        messageDiv.classList.remove('hidden');
+      }
+    } catch (error) {
+      messageDiv.textContent = 'Failed to unregister participant. Please try again.';
+      messageDiv.className = 'error';
+      messageDiv.classList.remove('hidden');
+      console.error('Error unregistering participant:', error);
+    }
+
+    // Hide message after 5 seconds
+    setTimeout(() => {
+      messageDiv.classList.add('hidden');
+    }, 5000);
+  }
 });
