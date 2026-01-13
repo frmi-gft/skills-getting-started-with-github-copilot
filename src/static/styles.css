@@ -103,6 +103,25 @@ section h3 {
   font-size: 14px;
 }
 
+/* Hide bullet points */
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+/* Add delete icon next to each participant */
+.participant {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.delete-icon {
+    cursor: pointer;
+    color: red;
+    margin-left: 10px;
+}
+
 /* Mensaje cuando no hay participantes */
 .no-participants {
   color: #777;
